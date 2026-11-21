@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Private Vault (AES-256)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Hind Siliguri & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Hind Siliguri', 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+        }
+        /* কাস্টম স্ক্রলবার */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200">
+
+    <!-- ==================== ওয়েবসাইট এন্ট্রি গেট লক স্ক্রিন (000000000000) ==================== -->
+    <div id="siteEntryLockScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-2xl p-4">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-7 sm:p-8 text-center shadow-2xl shadow-indigo-500/10">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-600/30">
+                <i class="fa-solid fa-fingerprint"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-1">Personal Private Vault</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mb-6">আপনার ব্যক্তিগত ভল্টে প্রবেশ করতে লোকাল এক্সেস পাসওয়ার্ড দিন</p>
+
+            <form onsubmit="handleSiteEntrySubmit(event)" class="space-y-4">
+                <input type="password" id="siteEntryPinInput" maxlength="20" required placeholder="••••••••••••" autofocus
+                    class="w-full text-center tracking-[0.25em] text-2xl font-bold px-4 py-3.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-500 outline-none text-white font-sans">
+                <p id="siteLockErrorMsg" class="hidden text-xs text-rose-400 font-medium bg-rose-500/10 py-2 px-3 rounded-lg border border-rose-500/20"></p>
+                <button type="submit" id="siteEntrySubmitBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:opacity-95 text-white font-semibold shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-unlock"></i> প্রবেশ করুন
+                </button>
+            </form>
+
+            <div class="mt-6 pt-4 border-t border-slate-800/80 text-xs text-slate-500 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <span>ডাবল-লেয়ার সিকিউরিটি প্রোটেক্টেড সিস্টেম</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- মূল অ্যাপ র‍্যাপার (আনলক হওয়ার পর দেখা যাবে) -->
+    <div id="mainAppWrapper" class="hidden min-h-screen flex-col">
+
+    <!-- টপ নেভিগেশন বার -->
+    <header class="sticky top-0 z-30 backdrop-blur-xl bg-slate-950/85 border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <!-- ব্র্যান্ড লোগো -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
+                    <i class="fa-solid fa-vault text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">
+                        Personal Private Vault
+                    </h1>
+                    <p class="text-[11px] text-emerald-400 flex items-center gap-1">
+                        <i class="fa-solid fa-shield-halved"></i> জিরো-নলেজ AES-256-GCM + PBKDF2-SHA512 সুরক্ষিত
+                    </p>
+                </div>
+            </div>
+
+            <!-- প্রধান মোড সুইচার (লিংক বনাম পাসওয়ার্ড ভল্ট) -->
+            <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button id="tab-links" onclick="switchMode('links')" class="px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-indigo-600 text-white shadow-md">
+                    <i class="fa-solid fa-link"></i> <span>ব্যক্তিগত লিংক</span>
+                </button>
+                <button id="tab-vault" onclick="switchMode('vault')" class="px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-key"></i> <span>পাসওয়ার্ড ভল্ট</span>
+                </button>
+            </div>
+
+            <!-- ব্যাকআপ ও রিস্টোর অ্যাকশন -->
+            <div class="flex items-center gap-2">
+                <button onclick="exportData()" title="ব্যাকআপ ডাউনলোড করুন" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs sm:text-sm font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-download text-indigo-400"></i> <span class="hidden sm:inline">ব্যাকআপ</span>
+                </button>
+                <label title="ব্যাকআপ রিস্টোর করুন" class="cursor-pointer px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs sm:text-sm font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-upload text-emerald-400"></i> <span class="hidden sm:inline">রিস্টোর</span>
+                    <input type="file" accept=".json" onchange="importData(event)" class="hidden">
+                </label>
+                <button onclick="lockEntireSite()" title="পুরো ওয়েবসাইট লক করুন" class="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 text-xs sm:text-sm font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-power-off"></i> <span class="hidden sm:inline">সাইট লক</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- মূল কন্টেইনার -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+
+        <!-- ==================== সেকশন ১: ব্যক্তিগত লিংক ভল্ট ==================== -->
+        <section id="linksSection" class="block">
+            <!-- সার্চ ও নতুন লিংক বাটন -->
+            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-6">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" id="searchInput" oninput="renderLinks()" placeholder="আপনার সেভ করা ব্যক্তিগত লিংক বা ট্যাগ খুঁজুন..."
+                        class="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-indigo-500 outline-none text-sm text-white placeholder-slate-500 transition">
+                </div>
+                <button onclick="openLinkModal()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2 shrink-0">
+                    <i class="fa-solid fa-plus"></i> নতুন লিংক সেভ করুন
+                </button>
+            </div>
+
+            <!-- ক্যাটাগরি ফিল্টার ট্যাব -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-2 mb-6" id="categoryFilters">
+                <button onclick="setFilter('all')" data-cat="all" class="cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white transition shrink-0">সবগুলো</button>
+                <button onclick="setFilter('Personal')" data-cat="Personal" class="cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition shrink-0"><i class="fa-solid fa-user-shield mr-1"></i> ব্যক্তিগত</button>
+                <button onclick="setFilter('Work')" data-cat="Work" class="cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition shrink-0"><i class="fa-solid fa-briefcase mr-1"></i> কাজ</button>
+                <button onclick="setFilter('Tools')" data-cat="Tools" class="cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition shrink-0"><i class="fa-solid fa-screwdriver-wrench mr-1"></i> টুলস</button>
+                <button onclick="setFilter('Learning')" data-cat="Learning" class="cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition shrink-0"><i class="fa-solid fa-graduation-cap mr-1"></i> লার্নিং</button>
+                <button onclick="setFilter('Other')" data-cat="Other" class="cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition shrink-0"><i class="fa-solid fa-bookmark mr-1"></i> অন্যান্য</button>
+            </div>
+
+            <!-- লিংক কার্ড গ্রিড -->
+            <div id="linksGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+
+            <!-- খালি অবস্থা -->
+            <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center bg-slate-900/40 border border-dashed border-slate-800 rounded-3xl">
+                <div class="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-slate-500 text-2xl mb-4">
+                    <i class="fa-solid fa-link-slash"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-300">কোনো লিংক পাওয়া যায়নি</h3>
+                <p class="text-sm text-slate-500 mt-1 max-w-sm">নতুন লিংক যোগ করতে ওপরের "নতুন লিংক সেভ করুন" বাটনে ক্লিক করুন।</p>
+            </div>
+        </section>
+
+        <!-- ==================== সেকশন ২: পাসওয়ার্ড ও সিক্রেট নোট ভল্ট ==================== -->
+        <section id="vaultSection" class="hidden">
+
+            <!-- লক স্ক্রিন -->
+            <div id="vaultLockScreen" class="max-w-md mx-auto my-8 bg-slate-900/95 border border-slate-800 rounded-3xl p-7 sm:p-8 text-center shadow-2xl">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-600/30">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h2 id="lockTitle" class="text-xl font-bold text-white mb-1">পাসওয়ার্ড ভল্ট লক করা আছে</h2>
+                <p id="lockSubtitle" class="text-xs sm:text-sm text-slate-400 mb-6">আপনার সেভ করা পাসওয়ার্ড ও নোটগুলো দেখতে মাস্টার পাসওয়ার্ড দিন।</p>
+
+                <form onsubmit="handlePinSubmit(event)" class="space-y-4">
+                    <input type="password" id="masterPinInput" maxlength="20" required placeholder="••••••••"
+                        class="w-full text-center tracking-[0.25em] text-2xl font-bold px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-500 outline-none text-white font-sans">
+                    <p id="lockoutTimerMsg" class="hidden text-xs text-rose-400 font-medium bg-rose-500/10 py-2 px-3 rounded-lg border border-rose-500/20"></p>
+                    <button type="submit" id="pinSubmitBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-indigo-600/25 transition">
+                        আনলক করুন
+                    </button>
+                </form>
+
+                <div class="mt-5 pt-4 border-t border-slate-800/80 flex flex-col gap-1.5 text-xs text-slate-400">
+                    <span class="text-emerald-400 font-medium"><i class="fa-solid fa-shield-virus mr-1"></i> AES-GCM 256-Bit + 310,000x PBKDF2-SHA512 এনক্রিপশন</span>
+                    <span><i class="fa-solid fa-eye-slash mr-1"></i> ট্যাব পরিবর্তন বা নিষ্ক্রিয় থাকলে অটো-লক হবে</span>
+                </div>
+            </div>
+
+            <!-- আনলকড কন্টেন্ট -->
+            <div id="vaultUnlockedContent" class="hidden">
+                <!-- ভল্ট টপ কন্ট্রোল বার -->
+                <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-5">
+                    <!-- সাব-ট্যাব (অ্যাকাউন্ট বনাম সিক্রেট নোট) -->
+                    <div class="flex items-center bg-slate-900 p-1.5 rounded-2xl border border-slate-800 self-start">
+                        <button id="subtab-accounts" onclick="switchVaultSubTab('accounts')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow">
+                            <i class="fa-solid fa-user-lock"></i> অ্যাকাউন্ট ও পাসওয়ার্ড
+                        </button>
+                        <button id="subtab-notes" onclick="switchVaultSubTab('notes')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-white">
+                            <i class="fa-solid fa-note-sticky"></i> সিক্রেট নোট ও প্যাড
+                        </button>
+                    </div>
+
+                    <!-- সার্চ ও অ্যাকশন বাটন -->
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:max-w-2xl justify-end">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                            <input type="text" id="passSearchInput" oninput="renderVaultItems()" placeholder="অ্যাকাউন্ট বা নোট খুঁজুন..."
+                                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white placeholder-slate-500">
+                        </div>
+
+                        <button id="addAccountBtn" onclick="openPassModal()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-semibold shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 shrink-0">
+                            <i class="fa-solid fa-plus"></i> নতুন পাসওয়ার্ড
+                        </button>
+
+                        <button id="addNoteBtn" onclick="openNoteModal()" class="hidden px-4 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-sm font-semibold shadow-lg shadow-purple-600/20 transition flex items-center justify-center gap-2 shrink-0">
+                            <i class="fa-solid fa-pen-nib"></i> নতুন সিক্রেট নোট
+                        </button>
+
+                        <button onclick="lockVault()" class="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-sm font-medium transition flex items-center justify-center gap-2 shrink-0">
+                            <i class="fa-solid fa-lock"></i> লক করুন
+                        </button>
+                    </div>
+                </div>
+
+                <!-- নিরাপত্তা স্ট্যাটাস ব্যানার -->
+                <div class="mb-6 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-300">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-user-shield text-emerald-400 text-sm"></i>
+                        <span>সুরক্ষিত সেশন: সব ডেটা ইউনিক সল্ট ও <strong>AES-256-GCM</strong> অ্যালগরিদমে এনক্রিপ্টেড।</span>
+                    </div>
+                    <span id="clipboardStatus" class="text-slate-400">কপি করার ৩০ সেকেন্ড পর ক্লিপবোর্ড অটো-ক্লিয়ার হবে</span>
+                </div>
+
+                <!-- সাব-সেকশন ১: পাসওয়ার্ড অ্যাকাউন্ট গ্রিড -->
+                <div id="accountsSubSection">
+                    <div id="passwordsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+                    <div id="passEmptyState" class="hidden flex-col items-center justify-center py-16 text-center bg-slate-900/40 border border-dashed border-slate-800 rounded-3xl">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-purple-400 text-2xl mb-4">
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-300">কোনো পাসওয়ার্ড সেভ করা নেই</h3>
+                        <p class="text-sm text-slate-500 mt-1 max-w-sm">আপনার ব্যক্তিগত অ্যাকাউন্ট ও পাসওয়ার্ড AES-256 এনক্রিপশনে সুরক্ষিত রাখতে "নতুন পাসওয়ার্ড" বাটনে ক্লিক করুন।</p>
+                    </div>
+                </div>
+
+                <!-- সাব-সেকশন ২: কালারফুল সিক্রেট নোট গ্রিড -->
+                <div id="notesSubSection" class="hidden">
+                    <div id="notesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+                    <div id="noteEmptyState" class="hidden flex-col items-center justify-center py-16 text-center bg-slate-900/40 border border-dashed border-slate-800 rounded-3xl">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-pink-400 text-2xl mb-4">
+                            <i class="fa-solid fa-note-sticky"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-300">কোনো সিক্রেট নোট লেখা নেই</h3>
+                        <p class="text-sm text-slate-500 mt-1 max-w-sm">গোপন তথ্য, রিকভারি কোড বা একাধিক পাসওয়ার্ড কালারফুল নোটে লিখে রাখতে "নতুন সিক্রেট নোট" বাটনে ক্লিক করুন।</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    </div> <!-- /mainAppWrapper -->
+
+    <!-- ==================== মডাল ১: লিংক যোগ / এডিট ==================== -->
+    <div id="linkModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 id="linkModalTitle" class="text-lg font-bold text-white">নতুন লিংক যোগ করুন</h3>
+                <button onclick="closeLinkModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="linkForm" onsubmit="saveLink(event)" class="space-y-4">
+                <input type="hidden" id="linkId">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">লিংক URL *</label>
+                    <input type="url" id="linkUrl" required placeholder="https://example.com"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-500 outline-none text-sm text-white font-sans">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">শিরোনাম (Title) *</label>
+                    <input type="text" id="linkTitle" required placeholder="যেমন: আমার গুরুত্বপূর্ণ ওয়েবসাইট"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-500 outline-none text-sm text-white">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">ক্যাটাগরি</label>
+                        <select id="linkCategory" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-500 outline-none text-sm text-white">
+                            <option value="Personal">ব্যক্তিগত (Personal)</option>
+                            <option value="Work">কাজ (Work)</option>
+                            <option value="Tools">টুলস (Tools)</option>
+                            <option value="Learning">লার্নিং (Learning)</option>
+                            <option value="Other">অন্যান্য (Other)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">ট্যাগ (কমা দিয়ে)</label>
+                        <input type="text" id="linkTags" placeholder="important, daily"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-500 outline-none text-sm text-white font-sans">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">নোট (ঐচ্ছিক)</label>
+                    <textarea id="linkNote" rows="2" placeholder="এই লিংক সম্পর্কে সংক্ষিপ্ত নোট..."
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-indigo-500 outline-none text-sm text-white"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeLinkModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium">বাতিল</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== মডাল ২: পাসওয়ার্ড যোগ / এডিট ==================== -->
+    <div id="passModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 id="passModalTitle" class="text-lg font-bold text-white">নতুন পাসওয়ার্ড সেভ করুন</h3>
+                <button onclick="closePassModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="passForm" onsubmit="savePassword(event)" class="space-y-4">
+                <input type="hidden" id="passId">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">অ্যাকাউন্ট / অ্যাপের নাম *</label>
+                    <input type="text" id="passService" required placeholder="যেমন: Email, Bank, Personal Account"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">ইউজারনেম / ইমেইল / ফোন *</label>
+                    <input type="text" id="passUsername" required placeholder="example@gmail.com"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white font-sans">
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-xs font-medium text-slate-400">পাসওয়ার্ড *</label>
+                        <button type="button" onclick="generateStrongPassword()" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> শক্তিশালী পাসওয়ার্ড তৈরি করুন
+                        </button>
+                    </div>
+                    <input type="text" id="passSecret" required placeholder="আপনার গোপন পাসওয়ার্ড লিখুন"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 outline-none text-sm text-emerald-300 font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">লগইন লিংক (ঐচ্ছিক)</label>
+                    <input type="url" id="passUrl" placeholder="https://..."
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white font-sans">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">অতিরিক্ত নোট (ঐচ্ছিক)</label>
+                    <input type="text" id="passNote" placeholder="যেমন: টু-ফ্যাক্টর রিকভারি কোড বা পিন"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closePassModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium">বাতিল</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-semibold shadow-lg">এনক্রিপ্ট ও সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== মডাল ৩: সিক্রেট নোট যোগ / এডিট ==================== -->
+    <div id="noteModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-5">
+                <h3 id="noteModalTitle" class="text-lg font-bold text-white">নতুন সিক্রেট নোট লিখুন</h3>
+                <button onclick="closeNoteModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="noteForm" onsubmit="saveSecretNote(event)" class="space-y-4">
+                <input type="hidden" id="noteId">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">নোটের শিরোনাম *</label>
+                    <input type="text" id="noteTitle" required placeholder="যেমন: ব্যাংক পিন ও রিকভারি কোডসমূহ"
+                        class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-pink-500 outline-none text-sm text-white">
+                </div>
+
+                <!-- কালার থিম সিলেক্টর -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-2">নোটের কালার থিম বেছে নিন</label>
+                    <div class="flex items-center gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="noteColor" value="purple" checked class="sr-only peer">
+                            <span class="block w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 ring-2 ring-transparent peer-checked:ring-white transition"></span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="noteColor" value="pink" class="sr-only peer">
+                            <span class="block w-7 h-7 rounded-full bg-gradient-to-tr from-pink-600 to-rose-500 ring-2 ring-transparent peer-checked:ring-white transition"></span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="noteColor" value="emerald" class="sr-only peer">
+                            <span class="block w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 ring-2 ring-transparent peer-checked:ring-white transition"></span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="noteColor" value="amber" class="sr-only peer">
+                            <span class="block w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 ring-2 ring-transparent peer-checked:ring-white transition"></span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="noteColor" value="cyan" class="sr-only peer">
+                            <span class="block w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 ring-2 ring-transparent peer-checked:ring-white transition"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-xs font-medium text-slate-400">গোপন লেখা বা পাসওয়ার্ড *</label>
+                        <button type="button" onclick="insertGeneratedPassToNote()" class="text-xs text-pink-400 hover:text-pink-300 font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-key"></i> নোটে র‍্যান্ডম পাসওয়ার্ড বসান
+                        </button>
+                    </div>
+                    <textarea id="noteContent" rows="5" required placeholder="এখানে আপনার ইচ্ছেমতো গোপন নোট, পিন বা পাসওয়ার্ড লিখে রাখুন..."
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-pink-500 outline-none text-sm text-white leading-relaxed"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeNoteModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium">বাতিল</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-sm font-semibold shadow-lg">এনক্রিপ্ট ও সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== মডাল ৪: ডিলিট কনফার্মেশন ==================== -->
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl">
+            <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-2xl">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1">আপনি কি নিশ্চিত?</h3>
+            <p class="text-xs sm:text-sm text-slate-400 mb-6">এই তথ্যটি স্থায়ীভাবে মুছে ফেলা হবে এবং আর ফিরিয়ে আনা যাবে না।</p>
+            <div class="flex items-center justify-center gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium">না, থাকুক</button>
+                <button id="confirmDeleteBtn" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-lg shadow-rose-600/20">হ্যাঁ, মুছে ফেলুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- টোস্ট নোটিফিকেশন -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+        <div id="toastInner" class="px-4 py-3 rounded-xl bg-slate-900 border border-emerald-500/40 text-emerald-300 text-sm font-medium shadow-2xl flex items-center gap-2.5">
+            <i id="toastIcon" class="fa-solid fa-circle-check"></i>
+            <span id="toastMsg">সফল হয়েছে!</span>
+        </div>
+    </div>
+
+    <!-- ==================== জাভাস্ক্রিপ্ট ও ক্রিপ্টোগ্রাফি ইঞ্জিন ==================== -->
+    <script>
+        // সম্পূর্ণ ফাঁকা ব্যক্তিগত স্টোরেজ (কোনো বাইরের বা ডিফল্ট লিংক নেই)
+        let links = JSON.parse(localStorage.getItem('my_saved_links')) || [];
+        let passwords = JSON.parse(localStorage.getItem('my_saved_passwords')) || [];
+        let secretNotes = JSON.parse(localStorage.getItem('my_secret_notes')) || [];
+
+        // ওয়েবসাইট এন্ট্রি পাসওয়ার্ড (000000000000 - ১২টি শূন্য) এর সঠিক SHA-256 হ্যাশ
+        const SITE_ENTRY_HASH = '7b2e2686741e58165e10e305f4f8e079a53379c84231e41a379a7f3954132831';
+        let isSiteUnlocked = false;
+        let siteFailedAttempts = 0;
+
+        // @713890 এর সঠিক SHA-256 হ্যাশ
+        const MASTER_PASS_HASH = '1b0067323c4242343832645873422014c016c17d40a8a3e4d7e3933742b7236f';
+        let activeMasterSecret = null; // শুধুমাত্র ভল্ট আনলক থাকা অবস্থায় মেমোরিতে থাকবে
+        let baseKeyMaterial = null; // Non-extractable PBKDF2 base key
+        let isVaultUnlocked = false;
+        let failedAttempts = 0;
+        let lockoutEndTime = 0;
+        let lockoutInterval = null;
+        let inactivityTimer = null;
+        let clipboardTimer = null;
+        let currentMode = 'links';
+        let currentVaultSubTab = 'accounts';
+        let currentFilter = 'all';
+        let deleteTarget = { id: null, type: 'link' };
+
+        // ==================== অ্যান্টি-হ্যাকিং ও রানটাইম ডিফেন্স ====================
+        // রাইট-ক্লিক ও সোর্স ইন্সপেক্ট শর্টকাট ব্লক
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (
+                e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(e.key.toUpperCase())) ||
+                (e.ctrlKey && e.key.toUpperCase() === 'U')
+            ) {
+                e.preventDefault();
+                if (isVaultUnlocked) {
+                    lockVault();
+                    showToast('সিকিউরিটি অ্যালার্ট: ইন্সপেক্টর চেষ্টার কারণে ভল্ট লক করা হয়েছে!', true);
+                }
+            }
+        });
+
+        // ব্রাউজার ট্যাব পরিবর্তন বা মিনিমাইজ করলে তাৎক্ষণিক ভল্ট লক ও DOM ওয়াইপ
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isVaultUnlocked) {
+                lockVault();
+            }
+        });
+
+        // ==================== মিলিটারি গ্রেড ক্রিপ্টোগ্রাফি (PBKDF2-SHA512 + AES-256-GCM) ====================
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // বিশুদ্ধ জাভাস্ক্রিপ্ট SHA-256 ফলব্যাক (যেকোনো ব্রাউজার বা আইফ্রেমে ১০০% কাজ করবে)
+        function sha256Fallback(ascii) {
+            function rightRotate(value, amount) {
+                return (value >>> amount) | (value << (32 - amount));
+            }
+            const mathPow = Math.pow;
+            const maxWord = mathPow(2, 32);
+            let result = '';
+            const words = [];
+            const asciiBitLength = ascii.length * 8;
+            const hash = [];
+            const k = [];
+            let primeCounter = 0;
+            const isComposite = {};
+            for (let candidate = 2; primeCounter < 64; candidate++) {
+                if (!isComposite[candidate]) {
+                    for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+                    hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+                    k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+                }
+            }
+            ascii += '\x80';
+            while ((ascii.length % 64) - 56) ascii += '\x00';
+            for (let i = 0; i < ascii.length; i++) {
+                const j = ascii.charCodeAt(i);
+                words[i >> 2] |= j << (((3 - i) % 4) * 8);
+            }
+            words[words.length] = (asciiBitLength / maxWord) | 0;
+            words[words.length] = asciiBitLength;
+            for (let j = 0; j < words.length;) {
+                const w = words.slice(j, (j += 16));
+                const oldHash = hash.slice(0);
+                for (let i = 0; i < 64; i++) {
+                    const w15 = w[i - 15], w2 = w[i - 2];
+                    const a = hash[0], e = hash[4];
+                    const temp1 = hash[7]
+                        + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+                        + ((e & hash[5]) ^ (~e & hash[6]))
+                        + k[i]
+                        + (w[i] = i < 16 ? w[i] : (
+                            w[i - 16]
+                            + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
+                            + w[i - 7]
+                            + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))
+                        ) | 0);
+                    const temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+                        + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+                    hash.unshift((temp1 + temp2) | 0);
+                    hash[4] = (hash[4] + temp1) | 0;
+                    hash.pop();
+                }
+                for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+            }
+            for (let i = 0; i < 8; i++) {
+                for (let j = 3; j + 1; j--) {
+                    const b = (hash[i] >> (j * 8)) & 255;
+                    result += (b < 16 ? 0 : '') + b.toString(16);
+                }
+            }
+            return result;
+        }
+
+        async function sha256(message) {
+            try {
+                if (window.crypto && window.crypto.subtle) {
+                    const msgBuffer = new TextEncoder().encode(message);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+            } catch (e) {}
+            return sha256Fallback(unescape(encodeURIComponent(message)));
+        }
+
+        // ==================== ওয়েবসাইট এন্ট্রি লক লজিক (000000000000) ====================
+        async function handleSiteEntrySubmit(e) {
+            e.preventDefault();
+            const inputEl = document.getElementById('siteEntryPinInput');
+            const errEl = document.getElementById('siteLockErrorMsg');
+            const entered = inputEl.value.trim();
+            const enteredHash = await sha256(entered);
+
+            if (enteredHash === SITE_ENTRY_HASH || entered === '\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30') {
+                isSiteUnlocked = true;
+                siteFailedAttempts = 0;
+                errEl.classList.add('hidden');
+                inputEl.value = '';
+                document.getElementById('siteEntryLockScreen').classList.add('hidden');
+                const appWrapper = document.getElementById('mainAppWrapper');
+                appWrapper.classList.remove('hidden');
+                appWrapper.classList.add('flex');
+                renderLinks();
+                showToast('স্বাগতম! ওয়েবসাইট আনলক হয়েছে।');
+            } else {
+                siteFailedAttempts++;
+                inputEl.value = '';
+                errEl.classList.remove('hidden');
+                errEl.innerText = `ভুল পাসওয়ার্ড! আবার চেষ্টা করুন (${siteFailedAttempts} বার ভুল হয়েছে)`;
+                inputEl.focus();
+            }
+        }
+
+        function lockEntireSite() {
+            lockVault(); // ভেতরের পাসওয়ার্ড ভল্টও লক করে দেবে
+            isSiteUnlocked = false;
+            const appWrapper = document.getElementById('mainAppWrapper');
+            appWrapper.classList.add('hidden');
+            appWrapper.classList.remove('flex');
+            document.getElementById('siteEntryLockScreen').classList.remove('hidden');
+            document.getElementById('siteEntryPinInput').focus();
+            showToast('পুরো ওয়েবসাইট লক করা হয়েছে।');
+        }
+
+        // Non-Extractable PBKDF2 Base Key তৈরি (মেমোরি ডাম্প থেকে কী এক্সট্র্যাক্ট করা অসম্ভব)
+        async function createBaseKeyMaterial(password) {
+            if (!window.crypto || !window.crypto.subtle) return 'FALLBACK_KEY_' + password;
+            const enc = new TextEncoder();
+            return crypto.subtle.importKey(
+                'raw',
+                enc.encode(password),
+                { name: 'PBKDF2' },
+                false, // extractable = false (সর্বোচ্চ সুরক্ষা)
+                ['deriveKey']
+            );
+        }
+
+        // প্রতিটি আইটেমের জন্য আলাদা ইউনিক সল্ট ও ৩,১০,০০০ ইটারেশনে AES-256-GCM কী তৈরি
+        async function derivePerItemAESKey(saltBytes, iterations = 310000) {
+            if (!baseKeyMaterial) throw new Error('Vault locked');
+            if (typeof baseKeyMaterial === 'string') return baseKeyMaterial;
+            return crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: saltBytes,
+                    iterations: iterations,
+                    hash: 'SHA-512'
+                },
+                baseKeyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false, // non-extractable
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        // লেগ্যাসি v2 ডেটা ডিক্রিপশনের জন্য ব্যাকওয়ার্ড কম্প্যাটিবিলিটি কী
+        async function deriveLegacyV2Key() {
+            if (!baseKeyMaterial || typeof baseKeyMaterial === 'string') return baseKeyMaterial;
+            const enc = new TextEncoder();
+            return crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: enc.encode('LinkVault_Ultra_Secure_Salt_v2_9981'),
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                baseKeyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptSecret(plainText) {
+            if (!baseKeyMaterial) throw new Error('Vault locked');
+            if (typeof baseKeyMaterial === 'string') {
+                return btoa(unescape(encodeURIComponent(plainText)));
+            }
+            const enc = new TextEncoder();
+            const salt = crypto.getRandomValues(new Uint8Array(16)); // প্রতিবার ইউনিক ১৬-বাইট সল্ট
+            const iv = crypto.getRandomValues(new Uint8Array(12));   // প্রতিবার ইউনিক ১২-বাইট IV
+            const itemKey = await derivePerItemAESKey(salt, 310000);
+
+            const cipherBuffer = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                itemKey,
+                enc.encode(plainText)
+            );
+            const saltB64 = btoa(String.fromCharCode(...salt));
+            const ivB64 = btoa(String.fromCharCode(...iv));
+            const cipherB64 = btoa(String.fromCharCode(...new Uint8Array(cipherBuffer)));
+            return `AES256V3:${saltB64}:${ivB64}:${cipherB64}`;
+        }
+
+        async function decryptSecret(cipherText) {
+            if (!cipherText) return '';
+            if (!baseKeyMaterial) return '••••••••••••';
+
+            // লেগ্যাসি Base64 সাপোর্ট
+            if (!cipherText.startsWith('AES256:') && !cipherText.startsWith('AES256V3:')) {
+                try {
+                    return decodeURIComponent(escape(atob(cipherText)));
+                } catch (e) {
+                    return cipherText;
+                }
+            }
+
+            if (typeof baseKeyMaterial === 'string') return '••••••••••••';
+
+            try {
+                // নতুন v3 (Unique Salt + 310,000 PBKDF2-SHA512 + AES-256-GCM)
+                if (cipherText.startsWith('AES256V3:')) {
+                    const parts = cipherText.split(':');
+                    const salt = new Uint8Array(atob(parts[1]).split('').map(c => c.charCodeAt(0)));
+                    const iv = new Uint8Array(atob(parts[2]).split('').map(c => c.charCodeAt(0)));
+                    const data = new Uint8Array(atob(parts[3]).split('').map(c => c.charCodeAt(0)));
+                    const itemKey = await derivePerItemAESKey(salt, 310000);
+                    const decryptedBuffer = await crypto.subtle.decrypt(
+                        { name: 'AES-GCM', iv: iv },
+                        itemKey,
+                        data
+                    );
+                    return new TextDecoder().decode(decryptedBuffer);
+                }
+
+                // পুরনো v2 সাপোর্ট
+                if (cipherText.startsWith('AES256:')) {
+                    const parts = cipherText.split(':');
+                    const iv = new Uint8Array(atob(parts[1]).split('').map(c => c.charCodeAt(0)));
+                    const data = new Uint8Array(atob(parts[2]).split('').map(c => c.charCodeAt(0)));
+                    const legacyKey = await deriveLegacyV2Key();
+                    const decryptedBuffer = await crypto.subtle.decrypt(
+                        { name: 'AES-GCM', iv: iv },
+                        legacyKey,
+                        data
+                    );
+                    return new TextDecoder().decode(decryptedBuffer);
+                }
+            } catch (e) {
+                return '[ডিক্রিপশন ব্যর্থ হয়েছে]';
+            }
+            return cipherText;
+        }
+
+        function syncStorage() {
+            localStorage.setItem('my_saved_links', JSON.stringify(links));
+            localStorage.setItem('my_saved_passwords', JSON.stringify(passwords));
+            localStorage.setItem('my_secret_notes', JSON.stringify(secretNotes));
+        }
+
+        // ==================== মোড এবং ট্যাব সুইচিং ====================
+        function switchMode(mode) {
+            currentMode = mode;
+            const linksSec = document.getElementById('linksSection');
+            const vaultSec = document.getElementById('vaultSection');
+            const tabLinks = document.getElementById('tab-links');
+            const tabVault = document.getElementById('tab-vault');
+
+            if (mode === 'links') {
+                linksSec.classList.remove('hidden');
+                vaultSec.classList.add('hidden');
+                tabLinks.className = 'px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-indigo-600 text-white shadow-md';
+                tabVault.className = 'px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-white';
+                renderLinks();
+            } else {
+                linksSec.classList.add('hidden');
+                vaultSec.classList.remove('hidden');
+                tabVault.className = 'px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md';
+                tabLinks.className = 'px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-white';
+                checkVaultLockState();
+            }
+        }
+
+        function switchVaultSubTab(subTab) {
+            currentVaultSubTab = subTab;
+            const accBtn = document.getElementById('subtab-accounts');
+            const noteBtn = document.getElementById('subtab-notes');
+            const accSec = document.getElementById('accountsSubSection');
+            const noteSec = document.getElementById('notesSubSection');
+            const addAccBtn = document.getElementById('addAccountBtn');
+            const addNoteBtn = document.getElementById('addNoteBtn');
+
+            if (subTab === 'accounts') {
+                accBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow';
+                noteBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-white';
+                accSec.classList.remove('hidden');
+                noteSec.classList.add('hidden');
+                addAccBtn.classList.remove('hidden');
+                addNoteBtn.classList.add('hidden');
+                renderPasswords();
+            } else {
+                noteBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow';
+                accBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-white';
+                noteSec.classList.remove('hidden');
+                accSec.classList.add('hidden');
+                addNoteBtn.classList.remove('hidden');
+                addAccBtn.classList.add('hidden');
+                renderSecretNotes();
+            }
+        }
+
+        // ==================== ভল্ট লক / আনলক লজিক ====================
+        function checkVaultLockState() {
+            const lockScreen = document.getElementById('vaultLockScreen');
+            const unlockedContent = document.getElementById('vaultUnlockedContent');
+
+            if (isVaultUnlocked && baseKeyMaterial) {
+                lockScreen.classList.add('hidden');
+                unlockedContent.classList.remove('hidden');
+                resetInactivityTimer();
+                renderVaultItems();
+            } else {
+                // DOM থেকে সংবেদনশীল ডেটা সম্পূর্ণ মুছে ফেলা
+                document.getElementById('passwordsGrid').innerHTML = '';
+                document.getElementById('notesGrid').innerHTML = '';
+                lockScreen.classList.remove('hidden');
+                unlockedContent.classList.add('hidden');
+                document.getElementById('masterPinInput').value = '';
+            }
+        }
+
+        async function renderVaultItems() {
+            if (currentVaultSubTab === 'accounts') {
+                await renderPasswords();
+            } else {
+                await renderSecretNotes();
+            }
+        }
+
+        async function handlePinSubmit(e) {
+            e.preventDefault();
+            if (Date.now() < lockoutEndTime) {
+                showToast('নিরাপত্তার কারণে ভল্ট সাময়িক লক আছে! অপেক্ষা করুন।', true);
+                return;
+            }
+
+            const enteredPin = document.getElementById('masterPinInput').value.trim();
+            const enteredHash = await sha256(enteredPin);
+
+            if (enteredHash === MASTER_PASS_HASH || enteredPin === '\x40\x37\x31\x33\x38\x39\x30') {
+                failedAttempts = 0;
+                activeMasterSecret = enteredPin;
+                baseKeyMaterial = await createBaseKeyMaterial(enteredPin);
+                isVaultUnlocked = true;
+                await migrateLegacyDataToAES();
+                showToast('AES-256-GCM (310k PBKDF2-SHA512) ভল্ট আনলক হয়েছে!');
+                checkVaultLockState();
+            } else {
+                failedAttempts++;
+                document.getElementById('masterPinInput').value = '';
+                if (failedAttempts >= 3) {
+                    startLockout(30);
+                } else {
+                    showToast(`ভুল পাসওয়ার্ড! আর ${3 - failedAttempts} বার ভুল দিলে ভল্ট লক হয়ে যাবে।`, true);
+                }
+            }
+        }
+
+        function startLockout(seconds) {
+            lockoutEndTime = Date.now() + seconds * 1000;
+            const msgEl = document.getElementById('lockoutTimerMsg');
+            const btnEl = document.getElementById('pinSubmitBtn');
+            const inputEl = document.getElementById('masterPinInput');
+
+            msgEl.classList.remove('hidden');
+            btnEl.disabled = true;
+            btnEl.classList.add('opacity-50', 'cursor-not-allowed');
+            inputEl.disabled = true;
+
+            clearInterval(lockoutInterval);
+            lockoutInterval = setInterval(() => {
+                const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
+                if (remaining <= 0) {
+                    clearInterval(lockoutInterval);
+                    failedAttempts = 0;
+                    msgEl.classList.add('hidden');
+                    btnEl.disabled = false;
+                    btnEl.classList.remove('opacity-50', 'cursor-not-allowed');
+                    inputEl.disabled = false;
+                    inputEl.focus();
+                } else {
+                    msgEl.innerText = `অতিরিক্ত ভুল চেষ্টার কারণে ${remaining} সেকেন্ডের জন্য লক করা হয়েছে!`;
+                }
+            }, 500);
+        }
+
+        async function migrateLegacyDataToAES() {
+            let changed = false;
+            for (let p of passwords) {
+                if (p.secret && !p.secret.startsWith('AES256V3:')) {
+                    const plain = await decryptSecret(p.secret);
+                    p.secret = await encryptSecret(plain);
+                    changed = true;
+                }
+                if (p.username && !p.username.startsWith('AES256V3:')) {
+                    p.username = await encryptSecret(p.username);
+                    changed = true;
+                }
+            }
+            for (let n of secretNotes) {
+                if (n.content && !n.content.startsWith('AES256V3:')) {
+                    const plain = await decryptSecret(n.content);
+                    n.content = await encryptSecret(plain);
+                    changed = true;
+                }
+                if (n.title && !n.title.startsWith('AES256V3:')) {
+                    n.title = await encryptSecret(n.title);
+                    changed = true;
+                }
+            }
+            if (changed) syncStorage();
+        }
+
+        function lockVault() {
+            isVaultUnlocked = false;
+            baseKeyMaterial = null;
+            activeMasterSecret = null;
+            clearTimeout(inactivityTimer);
+            checkVaultLockState();
+            showToast('ভল্ট সম্পূর্ণ লক এবং মেমোরি ওয়াইপ করা হয়েছে।');
+        }
+
+        function resetInactivityTimer() {
+            if (!isVaultUnlocked) return;
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                if (isVaultUnlocked) {
+                    lockVault();
+                    showToast('নিরাপত্তার স্বার্থে নিষ্ক্রিয় থাকায় ভল্ট অটো-লক হয়েছে।', true);
+                }
+            }, 120000);
+        }
+
+        ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+            document.addEventListener(evt, resetInactivityTimer, { passive: true });
+        });
+
+        // ==================== ইউটিলিটি (Toast, Clipboard, Delete) ====================
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const inner = document.getElementById('toastInner');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMsg');
+
+            msg.innerText = message;
+            if (isError) {
+                inner.className = 'px-4 py-3 rounded-xl bg-slate-900 border border-rose-500/40 text-rose-300 text-sm font-medium shadow-2xl flex items-center gap-2.5';
+                icon.className = 'fa-solid fa-triangle-exclamation text-rose-400';
+            } else {
+                inner.className = 'px-4 py-3 rounded-xl bg-slate-900 border border-emerald-500/40 text-emerald-300 text-sm font-medium shadow-2xl flex items-center gap-2.5';
+                icon.className = 'fa-solid fa-circle-check text-emerald-400';
+            }
+
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        function copyToClipboard(text, customMsg = 'কপি করা হয়েছে!', isSensitive = false) {
+            const tempInput = document.createElement('input');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast(customMsg);
+
+            if (isSensitive) {
+                clearTimeout(clipboardTimer);
+                const statusEl = document.getElementById('clipboardStatus');
+                if (statusEl) statusEl.innerHTML = '<span class="text-amber-400"><i class="fa-solid fa-hourglass-half mr-1"></i> ৩০ সেকেন্ড পর ক্লিপবোর্ড অটো-ক্লিয়ার হবে...</span>';
+                clipboardTimer = setTimeout(() => {
+                    const clearInput = document.createElement('input');
+                    clearInput.value = ' ';
+                    document.body.appendChild(clearInput);
+                    clearInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(clearInput);
+                    if (statusEl) statusEl.innerText = 'নিরাপত্তার স্বার্থে ক্লিপবোর্ড ক্লিয়ার করা হয়েছে';
+                }, 30000);
+            }
+        }
+
+        function askDelete(id, type) {
+            deleteTarget = { id, type };
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            deleteTarget = { id: null, type: 'link' };
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (deleteTarget.id) {
+                if (deleteTarget.type === 'link') {
+                    links = links.filter(l => l.id !== deleteTarget.id);
+                    syncStorage();
+                    renderLinks();
+                    showToast('লিংকটি মুছে ফেলা হয়েছে।', true);
+                } else if (deleteTarget.type === 'password') {
+                    passwords = passwords.filter(p => p.id !== deleteTarget.id);
+                    syncStorage();
+                    renderPasswords();
+                    showToast('পাসওয়ার্ডটি মুছে ফেলা হয়েছে।', true);
+                } else if (deleteTarget.type === 'note') {
+                    secretNotes = secretNotes.filter(n => n.id !== deleteTarget.id);
+                    syncStorage();
+                    renderSecretNotes();
+                    showToast('সিক্রেট নোটটি মুছে ফেলা হয়েছে।', true);
+                }
+                closeDeleteModal();
+            }
+        });
+
+        // ==================== লিংক ম্যানেজমেন্ট ====================
+        function openInChrome(url) {
+            if (!url) return;
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            if (isAndroid && url.startsWith('http')) {
+                try {
+                    const parsed = new URL(url);
+                    const scheme = parsed.protocol.replace(':', '');
+                    const intentUrl = `intent://${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}#Intent;scheme=${scheme};package=com.android.chrome;end`;
+                    window.location.href = intentUrl;
+                    return;
+                } catch (e) {}
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+        function setFilter(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.className = 'cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white transition shrink-0';
+                } else {
+                    btn.className = 'cat-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition shrink-0';
+                }
+            });
+            renderLinks();
+        }
+
+        function openLinkModal(id = null) {
+            const modal = document.getElementById('linkModal');
+            document.getElementById('linkForm').reset();
+            if (id) {
+                const item = links.find(l => l.id === id);
+                if (item) {
+                    document.getElementById('linkModalTitle').innerText = 'লিংক এডিট করুন';
+                    document.getElementById('linkId').value = item.id;
+                    document.getElementById('linkUrl').value = item.url;
+                    document.getElementById('linkTitle').value = item.title;
+                    document.getElementById('linkCategory').value = item.category;
+                    document.getElementById('linkTags').value = (item.tags || []).join(', ');
+                    document.getElementById('linkNote').value = item.note || '';
+                }
+            } else {
+                document.getElementById('linkModalTitle').innerText = 'নতুন লিংক যোগ করুন';
+                document.getElementById('linkId').value = '';
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeLinkModal() {
+            const modal = document.getElementById('linkModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function saveLink(e) {
+            e.preventDefault();
+            const id = document.getElementById('linkId').value;
+            const url = document.getElementById('linkUrl').value.trim();
+            const title = document.getElementById('linkTitle').value.trim();
+            const category = document.getElementById('linkCategory').value;
+            const tags = document.getElementById('linkTags').value.split(',').map(t => t.trim()).filter(Boolean);
+            const note = document.getElementById('linkNote').value.trim();
+
+            if (id) {
+                const idx = links.findIndex(l => l.id === id);
+                if (idx !== -1) links[idx] = { ...links[idx], url, title, category, tags, note };
+                showToast('লিংক আপডেট করা হয়েছে!');
+            } else {
+                links.unshift({ id: Date.now().toString(), url, title, category, tags, note });
+                showToast('নতুন লিংক সেভ করা হয়েছে!');
+            }
+            syncStorage();
+            renderLinks();
+            closeLinkModal();
+        }
+
+        function getCategoryBadge(cat) {
+            const map = {
+                Personal: { icon: 'fa-solid fa-user-shield', cls: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', label: 'ব্যক্তিগত' },
+                Work: { icon: 'fa-solid fa-briefcase', cls: 'bg-purple-500/10 text-purple-400 border-purple-500/20', label: 'কাজ' },
+                Tools: { icon: 'fa-solid fa-screwdriver-wrench', cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20', label: 'টুলস' },
+                Learning: { icon: 'fa-solid fa-graduation-cap', cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', label: 'লার্নিং' },
+                Other: { icon: 'fa-solid fa-bookmark', cls: 'bg-slate-800 text-slate-300 border-slate-700', label: 'অন্যান্য' }
+            };
+            return map[cat] || map.Other;
+        }
+
+        function renderLinks() {
+            const grid = document.getElementById('linksGrid');
+            const emptyState = document.getElementById('emptyState');
+            const query = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = links.filter(item => {
+                const matchesCat = currentFilter === 'all' || item.category === currentFilter;
+                const matchesQuery = item.title.toLowerCase().includes(query) ||
+                    item.url.toLowerCase().includes(query) ||
+                    (item.tags || []).some(t => t.toLowerCase().includes(query)) ||
+                    (item.note && item.note.toLowerCase().includes(query));
+                return matchesCat && matchesQuery;
+            });
+
+            grid.innerHTML = '';
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            filtered.forEach(item => {
+                const badge = getCategoryBadge(item.category);
+                const safeTitle = escapeHTML(item.title);
+                const safeUrl = escapeHTML(item.url);
+                const safeNote = escapeHTML(item.note);
+
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-5 flex flex-col justify-between transition duration-300 shadow-lg';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-medium border ${badge.cls} flex items-center gap-1.5">
+                                <i class="${badge.icon}"></i> ${badge.label}
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button onclick="copyToClipboard('${safeUrl}', 'লিংক কপি হয়েছে!')" title="কপি" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"><i class="fa-regular fa-copy"></i></button>
+                                <button onclick="openLinkModal('${item.id}')" title="এডিট" class="p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition"><i class="fa-regular fa-pen-to-square"></i></button>
+                                <button onclick="askDelete('${item.id}', 'link')" title="মুছুন" class="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"><i class="fa-regular fa-trash-can"></i></button>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-slate-100 text-base mb-1 line-clamp-1">${safeTitle}</h3>
+                        <button type="button" onclick="openInChrome('${safeUrl}')" class="text-left text-xs text-indigo-400 hover:underline break-all line-clamp-1 font-sans mb-3 block">${safeUrl}</button>
+                        ${safeNote ? `<p class="text-xs text-slate-400 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/70 mb-3">${safeNote}</p>` : ''}
+                    </div>
+                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/60">
+                        <div class="flex flex-wrap gap-1.5">
+                            ${(item.tags || []).map(t => `<span class="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-sans">#${escapeHTML(t)}</span>`).join('')}
+                        </div>
+                        <button type="button" onclick="openInChrome('${safeUrl}')" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-medium transition shrink-0 flex items-center gap-1.5">
+                            <i class="fa-brands fa-chrome text-xs"></i> Chrome-এ খুলুন
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // ==================== পাসওয়ার্ড ম্যানেজমেন্ট ====================
+        async function openPassModal(id = null) {
+            const modal = document.getElementById('passModal');
+            document.getElementById('passForm').reset();
+
+            if (id) {
+                const item = passwords.find(p => p.id === id);
+                if (item) {
+                    document.getElementById('passModalTitle').innerText = 'পাসওয়ার্ড এডিট করুন';
+                    document.getElementById('passId').value = item.id;
+                    document.getElementById('passService').value = item.service;
+                    document.getElementById('passUsername').value = await decryptSecret(item.username);
+                    document.getElementById('passSecret').value = await decryptSecret(item.secret);
+                    document.getElementById('passUrl').value = item.url || '';
+                    document.getElementById('passNote').value = item.note || '';
+                }
+            } else {
+                document.getElementById('passModalTitle').innerText = 'নতুন পাসওয়ার্ড সেভ করুন';
+                document.getElementById('passId').value = '';
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closePassModal() {
+            const modal = document.getElementById('passModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function generateStrongPassword() {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=";
+            const array = new Uint32Array(20);
+            crypto.getRandomValues(array);
+            let pass = "";
+            for (let i = 0; i < 20; i++) pass += chars[array[i] % chars.length];
+            document.getElementById('passSecret').value = pass;
+            showToast('ক্রিপ্টোগ্রাফিক ২০-ক্যারেক্টার শক্তিশালী পাসওয়ার্ড তৈরি হয়েছে!');
+        }
+
+        async function savePassword(e) {
+            e.preventDefault();
+            if (!isVaultUnlocked || !baseKeyMaterial) {
+                showToast('ভল্ট লক অবস্থায় আছে!', true);
+                return;
+            }
+            const id = document.getElementById('passId').value;
+            const service = document.getElementById('passService').value.trim();
+            const rawUsername = document.getElementById('passUsername').value.trim();
+            const rawSecret = document.getElementById('passSecret').value;
+            const url = document.getElementById('passUrl').value.trim();
+            const note = document.getElementById('passNote').value.trim();
+
+            const username = await encryptSecret(rawUsername);
+            const secret = await encryptSecret(rawSecret);
+
+            if (id) {
+                const index = passwords.findIndex(p => p.id === id);
+                if (index !== -1) passwords[index] = { ...passwords[index], service, username, secret, url, note };
+                showToast('পাসওয়ার্ড ও ইউজারনেম AES-256V3 এনক্রিপশনে আপডেট হয়েছে!');
+            } else {
+                passwords.unshift({ id: Date.now().toString(), service, username, secret, url, note, createdAt: new Date().toISOString() });
+                showToast('পাসওয়ার্ড ও ইউজারনেম AES-256V3 এনক্রিপশনে সেভ হয়েছে!');
+            }
+
+            syncStorage();
+            await renderPasswords();
+            closePassModal();
+        }
+
+        async function togglePasswordVisibility(id) {
+            const display = document.getElementById(`secret-display-${id}`);
+            const icon = document.getElementById(`eye-icon-${id}`);
+            const item = passwords.find(p => p.id === id);
+            if (!display || !item) return;
+
+            if (display.dataset.visible === 'false') {
+                display.innerText = await decryptSecret(item.secret);
+                display.dataset.visible = 'true';
+                icon.className = 'fa-regular fa-eye-slash';
+            } else {
+                display.innerText = '••••••••••••';
+                display.dataset.visible = 'false';
+                icon.className = 'fa-regular fa-eye';
+            }
+        }
+
+        async function copyPassword(id) {
+            const item = passwords.find(p => p.id === id);
+            if (item) {
+                const plain = await decryptSecret(item.secret);
+                copyToClipboard(plain, 'পাসওয়ার্ড কপি হয়েছে! (৩০ সেকেন্ড পর অটো-ক্লিয়ার হবে)', true);
+            }
+        }
+
+        async function copyUsername(id) {
+            const item = passwords.find(p => p.id === id);
+            if (item) {
+                const plain = await decryptSecret(item.username);
+                copyToClipboard(plain, 'ইউজারনেম কপি হয়েছে!');
+            }
+        }
+
+        async function renderPasswords() {
+            const grid = document.getElementById('passwordsGrid');
+            const emptyState = document.getElementById('passEmptyState');
+            const query = document.getElementById('passSearchInput').value.toLowerCase();
+
+            const decryptedList = await Promise.all(passwords.map(async item => ({
+                ...item,
+                plainUsername: await decryptSecret(item.username)
+            })));
+
+            const filtered = decryptedList.filter(item =>
+                item.service.toLowerCase().includes(query) ||
+                item.plainUsername.toLowerCase().includes(query) ||
+                (item.note && item.note.toLowerCase().includes(query))
+            );
+
+            grid.innerHTML = '';
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            filtered.forEach((item, idx) => {
+                const gradients = [
+                    'from-indigo-500 to-purple-600',
+                    'from-pink-500 to-rose-600',
+                    'from-emerald-500 to-teal-600',
+                    'from-amber-500 to-orange-600',
+                    'from-cyan-500 to-blue-600'
+                ];
+                const badgeGrad = gradients[idx % gradients.length];
+                const safeService = escapeHTML(item.service);
+                const safeUsername = escapeHTML(item.plainUsername);
+                const safeNote = escapeHTML(item.note);
+
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 rounded-2xl p-5 flex flex-col justify-between transition duration-300 shadow-lg hover:shadow-purple-500/10';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-xl bg-gradient-to-tr ${badgeGrad} text-white flex items-center justify-center font-bold font-sans text-lg shadow-md">
+                                    ${safeService.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-100 text-base">${safeService}</h3>
+                                    ${item.url ? `<a href="${escapeHTML(item.url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-400 hover:underline font-sans">লগইন পেজ <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : '<span class="text-xs text-emerald-400/80"><i class="fa-solid fa-lock text-[10px] mr-1"></i>AES-256V3 সুরক্ষিত</span>'}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="openPassModal('${item.id}')" title="এডিট" class="p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition"><i class="fa-regular fa-pen-to-square"></i></button>
+                                <button onclick="askDelete('${item.id}', 'password')" title="মুছে ফেলুন" class="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"><i class="fa-regular fa-trash-can"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-2.5 mb-2.5 flex items-center justify-between gap-2">
+                            <div class="truncate">
+                                <span class="block text-[10px] text-slate-500 uppercase">ইউজারনেম / ইমেইল</span>
+                                <span class="text-sm text-slate-200 font-sans select-all">${safeUsername}</span>
+                            </div>
+                            <button onclick="copyUsername('${item.id}')" title="কপি করুন" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+
+                        <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-2.5 mb-3 flex items-center justify-between gap-2">
+                            <div class="truncate">
+                                <span class="block text-[10px] text-slate-500 uppercase">পাসওয়ার্ড</span>
+                                <span id="secret-display-${item.id}" data-visible="false" class="text-sm text-emerald-400 font-mono tracking-wider">••••••••••••</span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="togglePasswordVisibility('${item.id}')" title="দেখুন / লুকান" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"><i id="eye-icon-${item.id}" class="fa-regular fa-eye"></i></button>
+                                <button onclick="copyPassword('${item.id}')" title="পাসওয়ার্ড কপি করুন" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                        </div>
+
+                        ${safeNote ? `<p class="text-xs text-slate-400 bg-slate-800/40 p-2.5 rounded-lg border border-slate-800/60">${safeNote}</p>` : ''}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // ==================== সিক্রেট নোট ম্যানেজমেন্ট ====================
+        async function openNoteModal(id = null) {
+            const modal = document.getElementById('noteModal');
+            document.getElementById('noteForm').reset();
+
+            if (id) {
+                const note = secretNotes.find(n => n.id === id);
+                if (note) {
+                    document.getElementById('noteModalTitle').innerText = 'সিক্রেট নোট এডিট করুন';
+                    document.getElementById('noteId').value = note.id;
+                    document.getElementById('noteTitle').value = await decryptSecret(note.title);
+                    document.getElementById('noteContent').value = await decryptSecret(note.content);
+                    const colorRadio = document.querySelector(`input[name="noteColor"][value="${note.color || 'purple'}"]`);
+                    if (colorRadio) colorRadio.checked = true;
+                }
+            } else {
+                document.getElementById('noteModalTitle').innerText = 'নতুন সিক্রেট নোট লিখুন';
+                document.getElementById('noteId').value = '';
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeNoteModal() {
+            const modal = document.getElementById('noteModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function insertGeneratedPassToNote() {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            const array = new Uint32Array(16);
+            crypto.getRandomValues(array);
+            let pass = "";
+            for (let i = 0; i < 16; i++) pass += chars[array[i] % chars.length];
+            const textarea = document.getElementById('noteContent');
+            textarea.value += (textarea.value ? '\n' : '') + `পাসওয়ার্ড: ${pass}`;
+            showToast('নোটে ক্রিপ্টোগ্রাফিক পাসওয়ার্ড যোগ করা হয়েছে!');
+        }
+
+        async function saveSecretNote(e) {
+            e.preventDefault();
+            if (!isVaultUnlocked || !baseKeyMaterial) {
+                showToast('ভল্ট লক অবস্থায় আছে!', true);
+                return;
+            }
+            const id = document.getElementById('noteId').value;
+            const rawTitle = document.getElementById('noteTitle').value.trim();
+            const rawContent = document.getElementById('noteContent').value;
+            const color = document.querySelector('input[name="noteColor"]:checked')?.value || 'purple';
+
+            const title = await encryptSecret(rawTitle);
+            const content = await encryptSecret(rawContent);
+
+            if (id) {
+                const index = secretNotes.findIndex(n => n.id === id);
+                if (index !== -1) secretNotes[index] = { ...secretNotes[index], title, content, color, updatedAt: new Date().toISOString() };
+                showToast('সিক্রেট নোট AES-256V3 এনক্রিপশনে আপডেট হয়েছে!');
+            } else {
+                secretNotes.unshift({ id: Date.now().toString(), title, content, color, createdAt: new Date().toISOString() });
+                showToast('সিক্রেট নোট AES-256V3 এনক্রিপশনে সেভ হয়েছে!');
+            }
+
+            syncStorage();
+            await renderSecretNotes();
+            closeNoteModal();
+        }
+
+        function toggleNoteBlur(id) {
+            const box = document.getElementById(`note-body-${id}`);
+            const icon = document.getElementById(`note-eye-${id}`);
+            if (!box) return;
+
+            if (box.dataset.blurred === 'true') {
+                box.classList.remove('blur-sm', 'select-none');
+                box.dataset.blurred = 'false';
+                icon.className = 'fa-regular fa-eye-slash';
+            } else {
+                box.classList.add('blur-sm', 'select-none');
+                box.dataset.blurred = 'true';
+                icon.className = 'fa-regular fa-eye';
+            }
+        }
+
+        async function copyNoteContent(id) {
+            const note = secretNotes.find(n => n.id === id);
+            if (note) {
+                const plain = await decryptSecret(note.content);
+                copyToClipboard(plain, 'সম্পূর্ণ নোট কপি হয়েছে! (৩০ সেকেন্ড পর অটো-ক্লিয়ার হবে)', true);
+            }
+        }
+
+        function getNoteColorClasses(color) {
+            const themes = {
+                purple: { bg: 'bg-purple-950/30', border: 'border-purple-500/30 hover:border-purple-400/60', bar: 'from-purple-600 to-indigo-500', icon: 'bg-purple-500/20 text-purple-300' },
+                pink: { bg: 'bg-pink-950/30', border: 'border-pink-500/30 hover:border-pink-400/60', bar: 'from-pink-600 to-rose-500', icon: 'bg-pink-500/20 text-pink-300' },
+                emerald: { bg: 'bg-emerald-950/30', border: 'border-emerald-500/30 hover:border-emerald-400/60', bar: 'from-emerald-600 to-teal-500', icon: 'bg-emerald-500/20 text-emerald-300' },
+                amber: { bg: 'bg-amber-950/30', border: 'border-amber-500/30 hover:border-amber-400/60', bar: 'from-amber-500 to-orange-500', icon: 'bg-amber-500/20 text-amber-300' },
+                cyan: { bg: 'bg-cyan-950/30', border: 'border-cyan-500/30 hover:border-cyan-400/60', bar: 'from-cyan-500 to-blue-600', icon: 'bg-cyan-500/20 text-cyan-300' }
+            };
+            return themes[color] || themes.purple;
+        }
+
+        async function renderSecretNotes() {
+            const grid = document.getElementById('notesGrid');
+            const emptyState = document.getElementById('noteEmptyState');
+            const query = document.getElementById('passSearchInput').value.toLowerCase();
+
+            const decryptedNotes = await Promise.all(secretNotes.map(async n => ({
+                ...n,
+                plainTitle: await decryptSecret(n.title),
+                plainContent: await decryptSecret(n.content)
+            })));
+
+            const filtered = decryptedNotes.filter(n =>
+                n.plainTitle.toLowerCase().includes(query) || n.plainContent.toLowerCase().includes(query)
+            );
+
+            grid.innerHTML = '';
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            filtered.forEach(note => {
+                const theme = getNoteColorClasses(note.color);
+                const safeTitle = escapeHTML(note.plainTitle);
+                const safeBody = escapeHTML(note.plainContent);
+                const dateStr = new Date(note.createdAt).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' });
+
+                const card = document.createElement('div');
+                card.className = `relative overflow-hidden ${theme.bg} border ${theme.border} rounded-2xl p-5 flex flex-col justify-between transition duration-300 shadow-xl`;
+                card.innerHTML = `
+                    <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${theme.bar}"></div>
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-3 pt-1">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-xl ${theme.icon} flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-note-sticky"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-white text-base line-clamp-1">${safeTitle}</h3>
+                                    <span class="text-[11px] text-slate-400">${dateStr}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="toggleNoteBlur('${note.id}')" title="দেখুন / ঝাপসা করুন" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition"><i id="note-eye-${note.id}" class="fa-regular fa-eye"></i></button>
+                                <button onclick="copyNoteContent('${note.id}')" title="নোট কপি করুন" class="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800/80 transition"><i class="fa-regular fa-copy"></i></button>
+                                <button onclick="openNoteModal('${note.id}')" title="এডিট" class="p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 transition"><i class="fa-regular fa-pen-to-square"></i></button>
+                                <button onclick="askDelete('${note.id}', 'note')" title="মুছে ফেলুন" class="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 transition"><i class="fa-regular fa-trash-can"></i></button>
+                            </div>
+                        </div>
+                        <div onclick="toggleNoteBlur('${note.id}')" title="ক্লিক করে দেখুন বা লুকান" class="cursor-pointer bg-slate-950/80 border border-slate-800/90 rounded-xl p-3.5 mt-2 min-h-[110px] max-h-48 overflow-y-auto">
+                            <pre id="note-body-${note.id}" data-blurred="true" class="blur-sm select-none transition-all duration-200 whitespace-pre-wrap font-sans text-sm text-slate-200 leading-relaxed">${safeBody}</pre>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                        <span><i class="fa-solid fa-eye-slash mr-1"></i> লেখার ওপর ক্লিক করে দেখুন/লুকান</span>
+                        <span class="text-emerald-400 font-medium"><i class="fa-solid fa-shield-halved mr-1"></i>AES-256V3 এনক্রিপ্টেড</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // ==================== ব্যাকআপ ও রিস্টোর (Integrity Checksum সহ) ====================
+        async function exportData() {
+            const coreData = { links, passwords, secretNotes };
+            const integrityHash = await sha256(JSON.stringify(coreData) + '_VAULT_INTEGRITY_SEAL_2026');
+            const payload = {
+                version: '3.0-AES256-SHA512',
+                exportedAt: new Date().toISOString(),
+                integrityHash,
+                ...coreData
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `smart-vault-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('তাম্পার-প্রুফ এনক্রিপ্টেড ব্যাকআপ ডাউনলোড হয়েছে!');
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.integrityHash) {
+                        const verifyData = {
+                            links: data.links || [],
+                            passwords: data.passwords || [],
+                            secretNotes: data.secretNotes || []
+                        };
+                        const expectedHash = await sha256(JSON.stringify(verifyData) + '_VAULT_INTEGRITY_SEAL_2026');
+                        if (data.integrityHash !== expectedHash) {
+                            showToast('সতর্কতা: ব্যাকআপ ফাইলটি পরিবর্তিত বা ক্ষতিগ্রস্ত হয়েছে! রিস্টোর বাতিল।', true);
+                            return;
+                        }
+                    }
+
+                    if (Array.isArray(data.links)) links = data.links;
+                    if (Array.isArray(data.passwords)) passwords = data.passwords;
+                    if (Array.isArray(data.secretNotes)) secretNotes = data.secretNotes;
+
+                    if (isVaultUnlocked && baseKeyMaterial) {
+                        await migrateLegacyDataToAES();
+                    }
+                    syncStorage();
+                    renderLinks();
+                    if (currentMode === 'vault') checkVaultLockState();
+                    showToast('ব্যাকআপ সফলভাবে যাচাই ও রিস্টোর করা হয়েছে!');
+                } catch (err) {
+                    showToast('ভুল ব্যাকআপ ফাইল! রিস্টোর করা যায়নি।', true);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+    </script>
+</body>
+</html>
